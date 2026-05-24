@@ -50,41 +50,59 @@ function buscarEmailsImap(palabrasClave, aliasCliente, imapUser, imapPass) {
       day: '2-digit', month: 'short', year: 'numeric'
     }).replace(',', '');
 
-    imap.once('ready', () => {
-      imap.openBox('INBOX', true, (err) => {
-        if (err) { imap.end(); return reject(err); }
-        imap.search(['ALL', ['SINCE', fechaImap]], (err, uids) => {
-          if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
-          const slice  = uids.slice(-10);
-          const fetch  = imap.fetch(slice, { bodies: '' });
-          const emails = [];
-          fetch.on('message', (msg) => {
-            let buffer = '';
-            msg.on('body', (stream) => {
-              stream.on('data', (chunk) => { buffer += chunk.toString('utf8'); });
-              stream.once('end', () => {
-                simpleParser(buffer).then(p => emails.push(p)).catch(() => {});
+    const carpetas = ['INBOX', 'INBOX.Principal', 'INBOX.Transacciones', 'INBOX.Novedades', 'INBOX.Promociones'];
+
+    function buscarEnCarpeta(carpeta) {
+      return new Promise((resolveBox) => {
+        imap.openBox(carpeta, true, (err) => {
+          if (err) return resolveBox([]);
+          imap.search(['ALL', ['SINCE', fechaImap]], (err, uids) => {
+            if (err || !uids || uids.length === 0) return resolveBox([]);
+            const slice = uids.slice(-10);
+            const fetch = imap.fetch(slice, { bodies: '' });
+            const emails = [];
+            fetch.on('message', (msg) => {
+              let buffer = '';
+              msg.on('body', (stream) => {
+                stream.on('data', (chunk) => { buffer += chunk.toString('utf8'); });
+                stream.once('end', () => {
+                  simpleParser(buffer).then(p => emails.push(p)).catch(() => {});
+                });
               });
             });
-          });
-          fetch.once('error', (err) => { imap.end(); reject(err); });
-          fetch.once('end', () => {
-            setTimeout(() => {
-              imap.end();
-              const filtrados = emails.filter(mail => {
-                const fecha = mail.date ? new Date(mail.date) : new Date(0);
-                if (fecha < limite) return false;
-                const asunto = (mail.subject || '').toLowerCase();
-                if (!palabrasClave.some(p => asunto.includes(p.toLowerCase()))) return false;
-                const cuerpo = (mail.text || '') + ' ' + (mail.html || '');
-                return cuerpo.toLowerCase().includes(aliasCliente.toLowerCase());
-              });
-              filtrados.sort((a, b) => new Date(b.date) - new Date(a.date));
-              resolve(filtrados);
-            }, 1500);
+            fetch.once('error', () => resolveBox([]));
+            fetch.once('end', () => {
+              setTimeout(() => resolveBox(emails), 800);
+            });
           });
         });
       });
+    }
+
+    imap.once('ready', () => {
+      (async () => {
+        try {
+          let todos = [];
+          for (const carpeta of carpetas) {
+            const mails = await buscarEnCarpeta(carpeta).catch(() => []);
+            todos = todos.concat(mails);
+          }
+          imap.end();
+          const filtrados = todos.filter(mail => {
+            const fecha = mail.date ? new Date(mail.date) : new Date(0);
+            if (fecha < limite) return false;
+            const asunto = (mail.subject || '').toLowerCase();
+            if (!palabrasClave.some(p => asunto.includes(p.toLowerCase()))) return false;
+            const cuerpo = (mail.text || '') + ' ' + (mail.html || '');
+            return cuerpo.toLowerCase().includes(aliasCliente.toLowerCase());
+          });
+          filtrados.sort((a, b) => new Date(b.date) - new Date(a.date));
+          resolve(filtrados);
+        } catch(e) {
+          imap.end();
+          resolve([]);
+        }
+      })();
     });
     imap.once('error', (err) => reject(err));
     imap.connect();
