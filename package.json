@@ -2,7 +2,6 @@
   "name": "itachi-icloud-backend",
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/edge-config": "^1.1.0",
     "imap": "^0.8.19",
     "mailparser": "^3.6.5"
   },
