@@ -28,7 +28,7 @@ async function getCuentas() {
   }
 }
 
-function buscarEmailsImap(palabrasClave) {
+function buscarEmailsImap(palabrasClave, aliasCliente) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
       user:       ICLOUD_USER,
@@ -73,7 +73,9 @@ function buscarEmailsImap(palabrasClave) {
                 const fecha = mail.date ? new Date(mail.date) : new Date(0);
                 if (fecha < limite) return false;
                 const asunto = (mail.subject || '').toLowerCase();
-                return palabrasClave.some(p => asunto.includes(p.toLowerCase()));
+                if (!palabrasClave.some(p => asunto.includes(p.toLowerCase()))) return false;
+                const cuerpo = (mail.text || '') + ' ' + (mail.html || '');
+                return cuerpo.toLowerCase().includes(aliasCliente.toLowerCase());
               });
               filtrados.sort((a, b) => new Date(b.date) - new Date(a.date));
               resolve(filtrados);
@@ -168,7 +170,7 @@ module.exports = async function handler(req, res) {
   if (!ok) return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
 
   try {
-    const emails    = await buscarEmailsImap(FILTROS[servicio]);
+    const emails    = await buscarEmailsImap(FILTROS[servicio], correo);
     if (!emails || emails.length === 0) return res.json({ error: mensajeVacio(servicio) });
     const mail      = emails[0];
     const cuerpo    = (mail.text || '') + ' ' + (mail.html || '');
