@@ -1,11 +1,15 @@
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
+const { Pool } = require('pg');
 
 const ICLOUD_USER     = process.env.ICLOUD_USER;
 const ICLOUD_PASS     = process.env.ICLOUD_PASS;
-const EDGE_CONFIG_ID  = process.env.EDGE_CONFIG_ID;
-const VERCEL_TOKEN    = process.env.VERCEL_TOKEN;
 const MINUTOS_VALIDOS = 5;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 const FILTROS = {
   netflix_hogar: ['hogar', 'household', 'ubicación', 'tv de tu hogar', 'actualiza tu hogar'],
@@ -14,17 +18,12 @@ const FILTROS = {
   disney:        ['código', 'code', 'verificación', 'verification'],
 };
 
-async function getCuentas() {
+async function getCuenta(correo) {
   try {
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/item/cuentas`;
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}` }
-    });
-    if (!res.ok) return {};
-    const data = await res.json();
-    return data.value || data || {};
+    const { rows } = await pool.query('SELECT servicio FROM cuentas WHERE correo = $1', [correo]);
+    return rows[0] || null;
   } catch (e) {
-    return {};
+    return null;
   }
 }
 
@@ -157,8 +156,7 @@ module.exports = async function handler(req, res) {
   if (!servicio || !correo)
     return res.json({ error: 'Faltan parámetros.' });
 
-  const CUENTAS = await getCuentas();
-  const cuenta  = CUENTAS[correo];
+  const cuenta = await getCuenta(correo);
   if (!cuenta) return res.json({ error: 'Correo no registrado.' });
 
   const esNetflix = ['netflix_hogar','netflix_login','netflix_pass'].includes(servicio);
