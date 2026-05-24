@@ -1,20 +1,15 @@
 // ════════════════════════════════════════════════════════
 //  ITACHI ZONE — API Serverless para Vercel
-//  Archivo: /api/codigo.js
+//  Lee cuentas desde Edge Config
 // ════════════════════════════════════════════════════════
 
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
+const { createClient } = require('@vercel/edge-config');
 
-const ICLOUD_USER    = process.env.ICLOUD_USER;
-const ICLOUD_PASS    = process.env.ICLOUD_PASS;
+const ICLOUD_USER     = process.env.ICLOUD_USER;
+const ICLOUD_PASS     = process.env.ICLOUD_PASS;
 const MINUTOS_VALIDOS = 5;
-
-const CUENTAS = {
-  'dentro-habitante-2c@icloud.com': { servicio: 'netflix' },
-  '68.cuark_antano@icloud.com': { servicio: 'netflix' },
-  // 'otro-alias@icloud.com': { servicio: 'disney' },
-};
 
 const FILTROS = {
   netflix_hogar: ['hogar', 'household', 'ubicación', 'tv de tu hogar', 'actualiza tu hogar'],
@@ -22,6 +17,16 @@ const FILTROS = {
   netflix_pass:  ['restablece', 'restablecer', 'reset', 'contraseña', 'password'],
   disney:        ['código', 'code', 'verificación', 'verification'],
 };
+
+async function getCuentas() {
+  try {
+    const client = createClient(process.env.EDGE_CONFIG);
+    const cuentas = await client.get('cuentas');
+    return cuentas || {};
+  } catch (e) {
+    return {};
+  }
+}
 
 function buscarEmailsImap(palabrasClave) {
   return new Promise((resolve, reject) => {
@@ -36,8 +41,8 @@ function buscarEmailsImap(palabrasClave) {
       authTimeout: 10000,
     });
 
-    const ahora  = new Date();
-    const limite = new Date(ahora.getTime() - MINUTOS_VALIDOS * 60 * 1000);
+    const ahora   = new Date();
+    const limite  = new Date(ahora.getTime() - MINUTOS_VALIDOS * 60 * 1000);
     const diezMin = new Date(ahora.getTime() - 10 * 60 * 1000);
     const fechaImap = diezMin.toLocaleDateString('en-US', {
       day: '2-digit', month: 'short', year: 'numeric'
@@ -53,27 +58,22 @@ function buscarEmailsImap(palabrasClave) {
             return resolve([]);
           }
 
-          const slice = uids.slice(-10);
-          const fetch = imap.fetch(slice, { bodies: '' });
+          const slice  = uids.slice(-10);
+          const fetch  = imap.fetch(slice, { bodies: '' });
           const emails = [];
-          const promises = [];
 
           fetch.on('message', (msg) => {
             let buffer = '';
             msg.on('body', (stream) => {
               stream.on('data', (chunk) => { buffer += chunk.toString('utf8'); });
               stream.once('end', () => {
-                const p = simpleParser(buffer).then(parsed => {
-                  emails.push(parsed);
-                }).catch(() => {});
-                promises.push(p);
+                simpleParser(buffer).then(parsed => emails.push(parsed)).catch(() => {});
               });
             });
           });
 
           fetch.once('error', (err) => { imap.end(); reject(err); });
           fetch.once('end', () => {
-            // Esperar a que todos los emails se parseen
             setTimeout(() => {
               imap.end();
               const filtrados = emails.filter(mail => {
@@ -153,15 +153,10 @@ function mensajeVacio(s) {
   return 'No hay código de Disney+ en los últimos 5 min.';
 }
 
-// ════════════════════════════════════
-//  HANDLER PRINCIPAL DE VERCEL
-// ════════════════════════════════════
 module.exports = async function handler(req, res) {
-  // CORS — permite que tu GitHub Pages llame a esta API
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const servicio = (req.query.servicio || '').trim();
@@ -170,7 +165,9 @@ module.exports = async function handler(req, res) {
   if (!servicio || !correo)
     return res.json({ error: 'Faltan parámetros.' });
 
-  const cuenta = CUENTAS[correo];
+  const CUENTAS = await getCuentas();
+  const cuenta  = CUENTAS[correo];
+
   if (!cuenta)
     return res.json({ error: 'Correo no registrado.' });
 
@@ -183,14 +180,14 @@ module.exports = async function handler(req, res) {
     return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
 
   try {
-    const palabras = FILTROS[servicio];
-    const emails   = await buscarEmailsImap(palabras);
+    const palabras  = FILTROS[servicio];
+    const emails    = await buscarEmailsImap(palabras);
 
     if (!emails || emails.length === 0)
       return res.json({ error: mensajeVacio(servicio) });
 
-    const mail     = emails[0];
-    const cuerpo   = (mail.text || '') + ' ' + (mail.html || '');
+    const mail      = emails[0];
+    const cuerpo    = (mail.text || '') + ' ' + (mail.html || '');
     const resultado = extraerValor(servicio, cuerpo);
 
     if (!resultado)
