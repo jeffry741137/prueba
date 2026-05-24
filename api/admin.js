@@ -1,19 +1,34 @@
-const { Pool } = require('pg');
+const ADMIN_PASS     = process.env.ADMIN_PASS || 'itachi123';
+const EDGE_CONFIG_ID = process.env.EDGE_CONFIG_ID;
+const VERCEL_TOKEN   = process.env.VERCEL_TOKEN;
 
-const ADMIN_PASS = process.env.ADMIN_PASS || 'itachi123';
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+async function getCuentas() {
+  try {
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/item/cuentas`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}` }
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.value || data || {};
+  } catch (e) {
+    return {};
+  }
+}
 
-async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS cuentas (
-      correo TEXT PRIMARY KEY,
-      servicio TEXT NOT NULL,
-      creado_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
+async function setCuentas(cuentas) {
+  const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${VERCEL_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      items: [{ operation: 'upsert', key: 'cuentas', value: cuentas }]
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 function parseBody(req) {
@@ -37,12 +52,8 @@ module.exports = async function handler(req, res) {
   if (pass !== ADMIN_PASS)
     return res.status(401).json({ error: 'No autorizado.' });
 
-  await initDB();
-
   if (req.method === 'GET') {
-    const { rows } = await pool.query('SELECT correo, servicio FROM cuentas ORDER BY creado_at DESC');
-    const cuentas = {};
-    rows.forEach(r => { cuentas[r.correo] = { servicio: r.servicio }; });
+    const cuentas = await getCuentas();
     return res.json({ cuentas });
   }
 
@@ -50,25 +61,18 @@ module.exports = async function handler(req, res) {
     const { correo, servicio } = await parseBody(req);
     if (!correo || !servicio)
       return res.status(400).json({ error: 'Faltan datos.' });
-    const c = correo.toLowerCase().trim();
-    const s = servicio.toLowerCase().trim();
-    await pool.query(
-      'INSERT INTO cuentas (correo, servicio) VALUES ($1, $2) ON CONFLICT (correo) DO UPDATE SET servicio = $2',
-      [c, s]
-    );
-    const { rows } = await pool.query('SELECT correo, servicio FROM cuentas ORDER BY creado_at DESC');
-    const cuentas = {};
-    rows.forEach(r => { cuentas[r.correo] = { servicio: r.servicio }; });
+    const cuentas = await getCuentas();
+    cuentas[correo.toLowerCase().trim()] = { servicio: servicio.toLowerCase().trim() };
+    await setCuentas(cuentas);
     return res.json({ ok: true, cuentas });
   }
 
   if (req.method === 'DELETE') {
     const { correo } = await parseBody(req);
     if (!correo) return res.status(400).json({ error: 'Falta el correo.' });
-    await pool.query('DELETE FROM cuentas WHERE correo = $1', [correo.toLowerCase().trim()]);
-    const { rows } = await pool.query('SELECT correo, servicio FROM cuentas ORDER BY creado_at DESC');
-    const cuentas = {};
-    rows.forEach(r => { cuentas[r.correo] = { servicio: r.servicio }; });
+    const cuentas = await getCuentas();
+    delete cuentas[correo.toLowerCase().trim()];
+    await setCuentas(cuentas);
     return res.json({ ok: true, cuentas });
   }
 
