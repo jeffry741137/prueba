@@ -4,13 +4,13 @@ const VERCEL_TOKEN   = process.env.VERCEL_TOKEN;
 
 async function getCuentas() {
   try {
-    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`;
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/item/cuentas`;
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}` }
     });
+    if (!res.ok) return {};
     const data = await res.json();
-    const item = (data.items || []).find(i => i.key === 'cuentas');
-    return item ? item.value : {};
+    return data.value || data || {};
   } catch (e) {
     return {};
   }
