@@ -94,16 +94,22 @@ function showMsg(id, tipo, texto) {
 async function login() {
   const pass = document.getElementById('passInput').value.trim();
   if (!pass) return;
-  token = pass;
-  const res = await fetch(API, { headers: { Authorization: 'Bearer ' + token } });
-  if (res.status === 401) {
-    showMsg('loginMsg', 'err', '❌ Contraseña incorrecta.');
-    token = '';
-    return;
+  try {
+    const res = await fetch(API, { 
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + pass } 
+    });
+    if (res.status === 401) {
+      showMsg('loginMsg', 'err', '❌ Contraseña incorrecta.');
+      return;
+    }
+    token = pass;
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('adminSection').style.display = 'block';
+    cargarLista();
+  } catch(e) {
+    showMsg('loginMsg', 'err', '❌ Error de conexión.');
   }
-  document.getElementById('loginSection').style.display = 'none';
-  document.getElementById('adminSection').style.display = 'block';
-  cargarLista();
 }
 
 async function cargarLista() {
