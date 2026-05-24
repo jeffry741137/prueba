@@ -1,8 +1,10 @@
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 
-const ICLOUD_USER     = process.env.ICLOUD_USER;
-const ICLOUD_PASS     = process.env.ICLOUD_PASS;
+const CUENTAS_ICLOUD = [
+  { user: process.env.ICLOUD_USER,  pass: process.env.ICLOUD_PASS },
+  { user: process.env.ICLOUD_USER2, pass: process.env.ICLOUD_PASS2 },
+];
 const EDGE_CONFIG_ID  = process.env.EDGE_CONFIG_ID;
 const VERCEL_TOKEN    = process.env.VERCEL_TOKEN;
 const MINUTOS_VALIDOS = 5;
@@ -28,11 +30,11 @@ async function getCuentas() {
   }
 }
 
-function buscarEmailsImap(palabrasClave, aliasCliente) {
+function buscarEmailsImap(palabrasClave, aliasCliente, imapUser, imapPass) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
-      user:       ICLOUD_USER,
-      password:   ICLOUD_PASS,
+      user:       imapUser,
+      password:   imapPass,
       host:       'imap.mail.me.com',
       port:       993,
       tls:        true,
@@ -170,7 +172,13 @@ module.exports = async function handler(req, res) {
   if (!ok) return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
 
   try {
-    const emails    = await buscarEmailsImap(FILTROS[servicio], correo);
+    // Buscar en ambas cuentas iCloud en paralelo
+    const resultados = await Promise.all(
+      CUENTAS_ICLOUD
+        .filter(c => c.user && c.pass)
+        .map(c => buscarEmailsImap(FILTROS[servicio], correo, c.user, c.pass).catch(() => []))
+    );
+    const emails = resultados.flat().sort((a, b) => new Date(b.date) - new Date(a.date));
     if (!emails || emails.length === 0) return res.json({ error: mensajeVacio(servicio) });
     const mail      = emails[0];
     const cuerpo    = (mail.text || '') + ' ' + (mail.html || '');
