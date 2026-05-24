@@ -1,14 +1,10 @@
-// ════════════════════════════════════════════════════════
-//  ITACHI ZONE — API Serverless para Vercel
-//  Lee cuentas desde Edge Config
-// ════════════════════════════════════════════════════════
-
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
-const { createClient } = require('@vercel/edge-config');
 
 const ICLOUD_USER     = process.env.ICLOUD_USER;
 const ICLOUD_PASS     = process.env.ICLOUD_PASS;
+const EDGE_CONFIG_ID  = process.env.EDGE_CONFIG_ID;
+const VERCEL_TOKEN    = process.env.VERCEL_TOKEN;
 const MINUTOS_VALIDOS = 5;
 
 const FILTROS = {
@@ -20,9 +16,13 @@ const FILTROS = {
 
 async function getCuentas() {
   try {
-    const client = createClient(process.env.EDGE_CONFIG);
-    const cuentas = await client.get('cuentas');
-    return cuentas || {};
+    const url = `https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${VERCEL_TOKEN}` }
+    });
+    const data = await res.json();
+    const item = (data.items || []).find(i => i.key === 'cuentas');
+    return item ? item.value : {};
   } catch (e) {
     return {};
   }
@@ -51,27 +51,20 @@ function buscarEmailsImap(palabrasClave) {
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
-
         imap.search(['ALL', ['SINCE', fechaImap]], (err, uids) => {
-          if (err || !uids || uids.length === 0) {
-            imap.end();
-            return resolve([]);
-          }
-
+          if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const slice  = uids.slice(-10);
           const fetch  = imap.fetch(slice, { bodies: '' });
           const emails = [];
-
           fetch.on('message', (msg) => {
             let buffer = '';
             msg.on('body', (stream) => {
               stream.on('data', (chunk) => { buffer += chunk.toString('utf8'); });
               stream.once('end', () => {
-                simpleParser(buffer).then(parsed => emails.push(parsed)).catch(() => {});
+                simpleParser(buffer).then(p => emails.push(p)).catch(() => {});
               });
             });
           });
-
           fetch.once('error', (err) => { imap.end(); reject(err); });
           fetch.once('end', () => {
             setTimeout(() => {
@@ -89,7 +82,6 @@ function buscarEmailsImap(palabrasClave) {
         });
       });
     });
-
     imap.once('error', (err) => reject(err));
     imap.connect();
   });
@@ -167,32 +159,21 @@ module.exports = async function handler(req, res) {
 
   const CUENTAS = await getCuentas();
   const cuenta  = CUENTAS[correo];
-
-  if (!cuenta)
-    return res.json({ error: 'Correo no registrado.' });
+  if (!cuenta) return res.json({ error: 'Correo no registrado.' });
 
   const esNetflix = ['netflix_hogar','netflix_login','netflix_pass'].includes(servicio);
   const ok =
     (cuenta.servicio === 'netflix' && esNetflix) ||
     (cuenta.servicio === 'disney'  && servicio === 'disney');
-
-  if (!ok)
-    return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
+  if (!ok) return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
 
   try {
-    const palabras  = FILTROS[servicio];
-    const emails    = await buscarEmailsImap(palabras);
-
-    if (!emails || emails.length === 0)
-      return res.json({ error: mensajeVacio(servicio) });
-
+    const emails    = await buscarEmailsImap(FILTROS[servicio]);
+    if (!emails || emails.length === 0) return res.json({ error: mensajeVacio(servicio) });
     const mail      = emails[0];
     const cuerpo    = (mail.text || '') + ' ' + (mail.html || '');
     const resultado = extraerValor(servicio, cuerpo);
-
-    if (!resultado)
-      return res.json({ error: 'No se encontró el código en el email.' });
-
+    if (!resultado) return res.json({ error: 'No se encontró el código en el email.' });
     return res.json({
       success: true,
       valor:   resultado.valor,
@@ -200,7 +181,6 @@ module.exports = async function handler(req, res) {
       asunto:  mail.subject || '',
       fecha:   mail.date ? new Date(mail.date).toISOString() : new Date().toISOString(),
     });
-
   } catch (err) {
     console.error('Error IMAP:', err.message);
     return res.json({ error: 'Error al conectar con el correo. Intenta de nuevo.' });
