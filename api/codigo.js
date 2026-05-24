@@ -12,6 +12,7 @@ const MINUTOS_VALIDOS = 5;
 
 const CUENTAS = {
   'dentro-habitante-2c@icloud.com': { servicio: 'netflix' },
+  '68.cuark_antano@icloud.com': { servicio: 'netflix' },
   // 'otro-alias@icloud.com': { servicio: 'disney' },
 };
 
