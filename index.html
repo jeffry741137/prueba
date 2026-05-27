@@ -322,6 +322,18 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
               <div class="subtype-desc">Código de 6 dígitos</div>
             </div>
           </div>
+          <div class="subtype-grid subtype-grid-2" style="margin-top:10px">
+            <div class="subtype-btn" id="btnPin" onclick="selectNetflixType('netflix_pin')">
+              <span class="subtype-icon">🔢</span>
+              <div class="subtype-name">PIN de Perfil</div>
+              <div class="subtype-desc">Código de 6 dígitos</div>
+            </div>
+            <div class="subtype-btn" id="btnTemporal" onclick="selectNetflixType('netflix_temporal')">
+              <span class="subtype-icon">🌐</span>
+              <div class="subtype-name">Código Temporal Hogar</div>
+              <div class="subtype-desc">Acceso fuera del hogar</div>
+            </div>
+          </div>
         </div>
 
         <!-- Divider -->
@@ -386,6 +398,18 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
           <div class="box-label">🔐 Tu link para restablecer contraseña</div>
           <div class="link-text" id="netflixPassLink"></div>
           <a class="btn-abrir" id="netflixPassBtn" href="#" target="_blank">🔐 Abrir y restablecer contraseña</a>
+        </div>
+
+        <div class="codigo6-box" id="boxNetflixPin" style="display:none">
+          <div class="box-label">🔢 PIN de restablecimiento de perfil</div>
+          <div class="codigo-num codigo6-num" id="netflixPinCode"></div>
+          <div class="codigo-expira">⏱️ Este código vence en 10 minutos</div>
+        </div>
+
+        <div class="link-box" id="boxNetflixTemporal" style="display:none">
+          <div class="box-label">🌐 Tu link de código temporal hogar</div>
+          <div class="link-text" id="netflixTemporalLink"></div>
+          <a class="btn-abrir" id="netflixTemporalBtn" href="#" target="_blank">🌐 Abrir y obtener código temporal</a>
         </div>
 
         <div class="expira-badge" style="margin-top:16px">⚠️ Úsalo antes de que expire</div>
@@ -507,6 +531,8 @@ function selectNetflixType(tipo){
   $('btnHogar').className='subtype-btn'+(tipo==='netflix_hogar'?' selected':'');
   $('btnLogin').className='subtype-btn'+(tipo==='netflix_login'?' selected':'');
   $('btnPass').className='subtype-btn'+(tipo==='netflix_pass'?' selected':'');
+  $('btnPin').className='subtype-btn'+(tipo==='netflix_pin'?' selected':'');
+  $('btnTemporal').className='subtype-btn'+(tipo==='netflix_temporal'?' selected':'');
   hideError();
   showFormFields();
 }
@@ -555,7 +581,7 @@ function showResult(data){
   $('resultState').style.display='flex';
   ['sn2','sn3'].forEach(id=>{const e=$(id);e.className='step-num done';e.textContent='✓';});
   $('sl3').className='step-label active';
-  ['boxNetflixHogar','boxNetflixLogin','boxDisney','boxNetflixPass'].forEach(id=>$(id).style.display='none');
+  ['boxNetflixHogar','boxNetflixLogin','boxDisney','boxNetflixPass','boxNetflixPin','boxNetflixTemporal'].forEach(id=>$(id).style.display='none');
 
   if(currentService==='netflix_hogar'){
     $('resultIcon').textContent='🏠';
@@ -583,6 +609,19 @@ function showResult(data){
     $('resultSub').textContent='Ingresa este código en Disney+ para verificar tu acceso.';
     $('boxDisney').style.display='block';
     $('disneyCode6').textContent=data.valor;
+  } else if(currentService==='netflix_pin'){
+    $('resultIcon').textContent='🔢';
+    $('resultTitle').textContent='¡Tu PIN está listo!';
+    $('resultSub').textContent='Ingresa este código para confirmar el cambio en tu perfil de Netflix.';
+    $('boxNetflixPin').style.display='block';
+    $('netflixPinCode').textContent=data.valor;
+  } else if(currentService==='netflix_temporal'){
+    $('resultIcon').textContent='🌐';
+    $('resultTitle').textContent='¡Tu link temporal está listo!';
+    $('resultSub').textContent='Abre el link para obtener tu código temporal de acceso fuera del hogar.';
+    $('boxNetflixTemporal').style.display='block';
+    $('netflixTemporalLink').textContent=data.valor;
+    $('netflixTemporalBtn').href=data.valor;
   }
 }
 
@@ -605,6 +644,8 @@ function resetForm(){
   $('btnHogar').className='subtype-btn';
   $('btnLogin').className='subtype-btn';
   $('btnPass').className='subtype-btn';
+  $('btnPin').className='subtype-btn';
+  $('btnTemporal').className='subtype-btn';
   $('netflixSubtype').classList.remove('show');
   ['divider','fieldEmail','btnSubmit'].forEach(id=>$(id).classList.remove('show'));
   hideError();
