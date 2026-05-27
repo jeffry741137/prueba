@@ -10,10 +10,12 @@ const VERCEL_TOKEN    = process.env.VERCEL_TOKEN;
 const MINUTOS_VALIDOS = 5;
 
 const FILTROS = {
-  netflix_hogar: ['hogar', 'household', 'ubicación', 'tv de tu hogar', 'actualiza tu hogar'],
-  netflix_login: ['código de inicio de sesión', 'sign-in code', 'inicio de sesión'],
-  netflix_pass:  ['restablece', 'restablecer', 'reset', 'contraseña', 'password'],
-  disney:        ['código', 'code', 'verificación', 'verification'],
+  netflix_hogar:    ['hogar', 'household', 'ubicación', 'tv de tu hogar', 'actualiza tu hogar'],
+  netflix_login:    ['código de inicio de sesión', 'sign-in code', 'inicio de sesión'],
+  netflix_pass:     ['restablece', 'restablecer', 'reset', 'contraseña', 'password'],
+  netflix_pin:      ['código de verificación', 'verification code', 'confirma el cambio', 'pin'],
+  netflix_temporal: ['código de acceso temporal', 'temporary access code', 'acceso temporal'],
+  disney:           ['código', 'code', 'verificación', 'verification'],
 };
 
 async function getCuentas() {
@@ -146,6 +148,30 @@ function extraerValor(servicio, cuerpo) {
       if (m?.[0]) return { valor: m[0].replace(/['">\s\[\]\\]+$/, '').trim(), tipo: 'link' };
     }
   }
+  if (servicio === 'netflix_pin') {
+    const patrones = [
+      /c[oó]digo de verificaci[oó]n[^0-9]*([0-9]{6})/i,
+      /confirma el cambio[^0-9]*([0-9]{6})/i,
+      /ingresa este c[oó]digo[^0-9]*([0-9]{6})/i,
+      />\s*([0-9]{6})\s*</,
+      /\b([0-9]{6})\b/,
+    ];
+    for (const p of patrones) {
+      const m = cuerpo.match(p);
+      if (m) return { valor: m[1], tipo: 'codigo' };
+    }
+  }
+  if (servicio === 'netflix_temporal') {
+    // El email contiene un botón "Obtener código" con un link travel/verify
+    const patrones = [
+      /https:\/\/www\.netflix\.com\/account\/travel\/verify[^\s"'<>\)\[\]\\]+/gi,
+      /https:\/\/www\.netflix\.com\/[^\s"'<>\)\[\]\\]*travel\/verify[^\s"'<>\)\[\]\\]+/gi,
+    ];
+    for (const p of patrones) {
+      const m = cuerpo.match(p);
+      if (m?.[0]) return { valor: m[0].replace(/['">\s\[\]\\]+$/, '').trim(), tipo: 'link' };
+    }
+  }
   if (servicio === 'disney') {
     const patrones = [
       /c[oó]digo[^0-9]*([0-9]{6})/i,
@@ -161,9 +187,11 @@ function extraerValor(servicio, cuerpo) {
 }
 
 function mensajeVacio(s) {
-  if (s === 'netflix_hogar') return 'No hay email de Hogar en los últimos 5 min. Solicítalo desde Netflix.';
-  if (s === 'netflix_login') return 'No hay código de inicio de sesión en los últimos 5 min.';
-  if (s === 'netflix_pass')  return 'No hay email de restablecimiento en los últimos 5 min.';
+  if (s === 'netflix_hogar')    return 'No hay email de Hogar en los últimos 5 min. Solicítalo desde Netflix.';
+  if (s === 'netflix_login')    return 'No hay código de inicio de sesión en los últimos 5 min.';
+  if (s === 'netflix_pass')     return 'No hay email de restablecimiento en los últimos 5 min.';
+  if (s === 'netflix_pin')      return 'No hay código PIN de verificación en los últimos 5 min.';
+  if (s === 'netflix_temporal') return 'No hay email de código temporal en los últimos 5 min. Solicítalo desde Netflix.';
   return 'No hay código de Disney+ en los últimos 5 min.';
 }
 
@@ -183,7 +211,7 @@ module.exports = async function handler(req, res) {
   const cuenta  = CUENTAS[correo];
   if (!cuenta) return res.json({ error: 'Correo no registrado.' });
 
-  const esNetflix = ['netflix_hogar','netflix_login','netflix_pass'].includes(servicio);
+  const esNetflix = ['netflix_hogar','netflix_login','netflix_pass','netflix_pin','netflix_temporal'].includes(servicio);
   const ok =
     (cuenta.servicio === 'netflix' && esNetflix) ||
     (cuenta.servicio === 'disney'  && servicio === 'disney');
