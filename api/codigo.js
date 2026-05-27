@@ -7,7 +7,7 @@ const CUENTAS_ICLOUD = [
 ];
 const EDGE_CONFIG_ID  = process.env.EDGE_CONFIG_ID;
 const VERCEL_TOKEN    = process.env.VERCEL_TOKEN;
-const MINUTOS_VALIDOS = 15; // ✅ FIX 1: Ampliado de 5 a 15 minutos
+const MINUTOS_VALIDOS = 5;
 
 const FILTROS = {
   netflix_hogar: ['hogar', 'household', 'ubicación', 'tv de tu hogar', 'actualiza tu hogar'],
@@ -45,9 +45,8 @@ function buscarEmailsImap(palabrasClave, aliasCliente, imapUser, imapPass) {
 
     const ahora   = new Date();
     const limite  = new Date(ahora.getTime() - MINUTOS_VALIDOS * 60 * 1000);
-    // ✅ FIX 2: La ventana de búsqueda IMAP ahora coincide con MINUTOS_VALIDOS (+ 5 min margen)
-    const ventanaBusqueda = new Date(ahora.getTime() - (MINUTOS_VALIDOS + 5) * 60 * 1000);
-    const fechaImap = ventanaBusqueda.toLocaleDateString('en-US', {
+    const diezMin = new Date(ahora.getTime() - 10 * 60 * 1000);
+    const fechaImap = diezMin.toLocaleDateString('en-US', {
       day: '2-digit', month: 'short', year: 'numeric'
     }).replace(',', '');
 
@@ -59,8 +58,7 @@ function buscarEmailsImap(palabrasClave, aliasCliente, imapUser, imapPass) {
           if (err) return resolveBox([]);
           imap.search(['ALL', ['SINCE', fechaImap]], (err, uids) => {
             if (err || !uids || uids.length === 0) return resolveBox([]);
-            // ✅ FIX 3: Aumentar slice de 10 a 20 para no perder emails
-            const slice = uids.slice(-20);
+            const slice = uids.slice(-10);
             const fetch = imap.fetch(slice, { bodies: '' });
             const emails = [];
             fetch.on('message', (msg) => {
@@ -120,7 +118,7 @@ function extraerValor(servicio, cuerpo) {
     ];
     for (const p of patrones) {
       const m = cuerpo.match(p);
-      if (m?.[0]) return { valor: m[0].replace(/['">\\s\\\\]+$/, '').trim(), tipo: 'link' };
+      if (m?.[0]) return { valor: m[0].replace(/['">\s\\]+$/, '').trim(), tipo: 'link' };
     }
   }
   if (servicio === 'netflix_login') {
@@ -128,9 +126,9 @@ function extraerValor(servicio, cuerpo) {
       /c[oó]digo de inicio de sesi[oó]n[^0-9]*([0-9]{4,6})/i,
       /sign.in code[^0-9]*([0-9]{4,6})/i,
       /c[oó]digo[^0-9]*([0-9]{4,6})/i,
-      />\\s*([0-9]{4,6})\\s*</,
-      /\\b([0-9]{6})\\b/,
-      /\\b([0-9]{4})\\b/,
+      />\s*([0-9]{4,6})\s*</,
+      /\b([0-9]{6})\b/,
+      /\b([0-9]{4})\b/,
     ];
     for (const p of patrones) {
       const m = cuerpo.match(p);
@@ -138,41 +136,21 @@ function extraerValor(servicio, cuerpo) {
     }
   }
   if (servicio === 'netflix_pass') {
-    // ✅ FIX 4: Limpiar el link correctamente, incluyendo posibles caracteres de encoding roto
     const patrones = [
-      /https:\/\/www\.netflix\.com\/[^\s"'<>\)\\]*password[^\s"'<>\)\\]+/gi,
-      /https:\/\/www\.netflix\.com\/[^\s"'<>\)\\]*reset[^\s"'<>\)\\]+/gi,
-      /https:\/\/www\.netflix\.com\/account\/[^\s"'<>\)\\]{30,}/gi,
+      /https:\/\/www\.netflix\.com\/[^\s"'<>\)\[\]\\]*password[^\s"'<>\)\[\]\\]+/gi,
+      /https:\/\/www\.netflix\.com\/[^\s"'<>\)\[\]\\]*reset[^\s"'<>\)\[\]\\]+/gi,
+      /https:\/\/www\.netflix\.com\/account\/[^\s"'<>\)\[\]\\]{30,}/gi,
     ];
     for (const p of patrones) {
       const m = cuerpo.match(p);
-      if (m?.[0]) {
-        let link = m[0]
-          .replace(/['">\s\\]+$/, '')  // quitar caracteres al final
-          .replace(/=\r?\n/g, '')       // quitar soft line breaks de emails
-          .replace(/\r?\n/g, '')        // quitar saltos de línea
-          .trim();
-        // Decodificar y re-encodear para asegurar URL válida
-        try {
-          link = decodeURIComponent(link);
-          link = encodeURIComponent(link)
-            .replace(/%3A/g, ':')
-            .replace(/%2F/g, '/')
-            .replace(/%3F/g, '?')
-            .replace(/%3D/g, '=')
-            .replace(/%26/g, '&');
-        } catch(e) {
-          // Si no se puede decodificar, usar el link tal cual
-        }
-        return { valor: link, tipo: 'link' };
-      }
+      if (m?.[0]) return { valor: m[0].replace(/['">\s\[\]\\]+$/, '').trim(), tipo: 'link' };
     }
   }
   if (servicio === 'disney') {
     const patrones = [
       /c[oó]digo[^0-9]*([0-9]{6})/i,
-      />\\s*([0-9]{6})\\s*</,
-      /\\b([0-9]{6})\\b/,
+      />\s*([0-9]{6})\s*</,
+      /\b([0-9]{6})\b/,
     ];
     for (const p of patrones) {
       const m = cuerpo.match(p);
@@ -183,10 +161,10 @@ function extraerValor(servicio, cuerpo) {
 }
 
 function mensajeVacio(s) {
-  if (s === 'netflix_hogar') return 'No hay email de Hogar en los últimos 15 min. Solicítalo desde Netflix.';
-  if (s === 'netflix_login') return 'No hay código de inicio de sesión en los últimos 15 min.';
-  if (s === 'netflix_pass')  return 'No hay email de restablecimiento en los últimos 15 min.';
-  return 'No hay código de Disney+ en los últimos 15 min.';
+  if (s === 'netflix_hogar') return 'No hay email de Hogar en los últimos 5 min. Solicítalo desde Netflix.';
+  if (s === 'netflix_login') return 'No hay código de inicio de sesión en los últimos 5 min.';
+  if (s === 'netflix_pass')  return 'No hay email de restablecimiento en los últimos 5 min.';
+  return 'No hay código de Disney+ en los últimos 5 min.';
 }
 
 module.exports = async function handler(req, res) {
@@ -212,6 +190,7 @@ module.exports = async function handler(req, res) {
   if (!ok) return res.json({ error: 'Este correo no corresponde al servicio solicitado.' });
 
   try {
+    // Buscar en ambas cuentas iCloud en paralelo
     const resultados = await Promise.all(
       CUENTAS_ICLOUD
         .filter(c => c.user && c.pass)
