@@ -126,9 +126,11 @@ body.svc-disney .section-icon{background:rgba(26,111,255,.1);border-color:rgba(2
 .subtype-label{font-size:10px;font-weight:700;color:var(--red3);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;}
 .subtype-label::before{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(233,30,140,.4));}
 .subtype-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(233,30,140,.4),transparent);}
-.subtype-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.subtype-grid-3{grid-template-columns:1fr 1fr 1fr;}
-@media(max-width:400px){.subtype-grid-3{grid-template-columns:1fr 1fr;}}
+.subtype-grid{display:grid;gap:10px;}
+.subtype-grid-5{grid-template-columns:1fr 1fr 1fr;}
+@media(max-width:500px){
+  .subtype-grid-5{grid-template-columns:1fr 1fr;}
+}
 .subtype-btn{padding:16px 10px;border-radius:16px;border:1.5px solid rgba(233,30,140,.2);background:rgba(233,30,140,.04);cursor:pointer;text-align:center;user-select:none;transition:all .3s cubic-bezier(.34,1.56,.64,1);}
 .subtype-btn:hover{border-color:#e91e8c;background:rgba(233,30,140,.09);transform:translateY(-3px);box-shadow:0 9px 28px rgba(233,30,140,.3);}
 .subtype-btn.selected{border-color:#e91e8c;background:rgba(233,30,140,.1);transform:translateY(-3px);box-shadow:0 9px 28px rgba(233,30,140,.3);}
@@ -305,7 +307,7 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
         <!-- Netflix subtipo -->
         <div class="netflix-subtype" id="netflixSubtype">
           <div class="subtype-label">🎬 ¿Qué código necesitas?</div>
-          <div class="subtype-grid subtype-grid-3">
+          <div class="subtype-grid subtype-grid-5">
             <div class="subtype-btn" id="btnHogar" onclick="selectNetflixType('netflix_hogar')">
               <span class="subtype-icon">🏠</span>
               <div class="subtype-name">Código Hogar</div>
@@ -321,8 +323,6 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
               <div class="subtype-name">Cambiar Contraseña</div>
               <div class="subtype-desc">Código de 6 dígitos</div>
             </div>
-          </div>
-          <div class="subtype-grid subtype-grid-2" style="margin-top:10px">
             <div class="subtype-btn" id="btnPin" onclick="selectNetflixType('netflix_pin')">
               <span class="subtype-icon">🔢</span>
               <div class="subtype-name">PIN de Perfil</div>
