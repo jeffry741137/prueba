@@ -325,6 +325,16 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
               <div class="subtype-name">Cambiar Contraseña</div>
               <div class="subtype-desc">Código de 6 dígitos</div>
             </div>
+            <div class="subtype-btn" id="btnPin" onclick="selectNetflixType('netflix_pin')">
+              <span class="subtype-icon">🔢</span>
+              <div class="subtype-name">PIN de Perfil</div>
+              <div class="subtype-desc">Código de 6 dígitos</div>
+            </div>
+            <div class="subtype-btn" id="btnTemporal" onclick="selectNetflixType('netflix_temporal')">
+              <span class="subtype-icon">🌐</span>
+              <div class="subtype-name">Código Temporal Hogar</div>
+              <div class="subtype-desc">Acceso fuera del hogar</div>
+            </div>
           </div>
         </div>
 
@@ -378,10 +388,7 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
 
         <div class="error-box" id="errorBox"></div>
 
-        <div class="card-foot">
-          <a class="flink" id="waLink" href="#" target="_blank">🔵 Whatsapp</a>
-          <a class="flink" id="waLink" href="#" target="_blank">🔵 Telegram</a>
-        </div>
+
         <div class="copy">© 2026 <b>https://wa.me/51986165524</b> — Todos los derechos reservados</div>
       </div>
 
@@ -559,6 +566,8 @@ function selectNetflixType(tipo){
   $('btnPass').className='subtype-btn'+(tipo==='netflix_pass'?' selected':'');
   $('btnPin') && ($('btnPin').className='subtype-btn'+(tipo==='netflix_pin'?' selected':''));
   $('btnTemporal') && ($('btnTemporal').className='subtype-btn'+(tipo==='netflix_temporal'?' selected':''));
+  $('btnPin') && ($('btnPin').className='subtype-btn'+(tipo==='netflix_pin'?' selected':''));
+  $('btnTemporal') && ($('btnTemporal').className='subtype-btn'+(tipo==='netflix_temporal'?' selected':''));
   $('btnLogin4').className='subtype-btn login-sub-btn'+(tipo==='netflix_login4'?' selected':'');
   $('btnLoginUrl').className='subtype-btn login-sub-btn'+(tipo==='netflix_login_url'?' selected':'');
   $('btnLogin6').className='subtype-btn login-sub-btn'+(tipo==='netflix_login6'?' selected':'');
@@ -610,7 +619,7 @@ function showResult(data){
   $('resultState').style.display='flex';
   ['sn2','sn3'].forEach(id=>{const e=$(id);e.className='step-num done';e.textContent='✓';});
   $('sl3').className='step-label active';
-  ['boxNetflixHogar','boxNetflixLogin','boxDisney','boxNetflixPass'].forEach(id=>$(id).style.display='none');
+  ['boxNetflixHogar','boxNetflixLogin','boxDisney','boxNetflixPass','boxNetflixPin','boxNetflixTemporal'].forEach(id=>$(id) && ($(id).style.display='none'));
 
   if(currentService==='netflix_hogar'){
     $('resultIcon').textContent='🏠';
@@ -645,6 +654,19 @@ function showResult(data){
     $('resultSub').textContent='Ingresa este código para verificar el acceso desde tu dispositivo.';
     $('boxNetflixPin').style.display='block';
     $('netflixPinCode').textContent=data.valor;
+  } else if(currentService==='netflix_pin'){
+    $('resultIcon').textContent='🔢';
+    $('resultTitle').textContent='¡Tu PIN está listo!';
+    $('resultSub').textContent='Ingresa este código para confirmar el cambio en tu perfil de Netflix.';
+    $('boxNetflixPin').style.display='block';
+    $('netflixPinCode').textContent=data.valor;
+  } else if(currentService==='netflix_temporal'){
+    $('resultIcon').textContent='🌐';
+    $('resultTitle').textContent='¡Tu link temporal está listo!';
+    $('resultSub').textContent='Abre el link para obtener tu código temporal de acceso fuera del hogar.';
+    $('boxNetflixTemporal').style.display='block';
+    $('netflixTemporalLink').textContent=data.valor;
+    $('netflixTemporalBtn').href=data.valor;
   } else if(currentService==='netflix_pass'){
     $('resultIcon').textContent='🔐';
     $('resultTitle').textContent='¡Tu link está listo!';
