@@ -422,6 +422,18 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
           <a class="btn-abrir" id="netflixPassBtn" href="#" target="_blank">🔐 Abrir y restablecer contraseña</a>
         </div>
 
+        <div class="codigo6-box" id="boxNetflixPin" style="display:none">
+          <div class="box-label">🔢 PIN de restablecimiento de perfil</div>
+          <div class="codigo-num codigo6-num" id="netflixPinCode"></div>
+          <div class="codigo-expira">⏱️ Este código vence en 10 minutos</div>
+        </div>
+
+        <div class="link-box" id="boxNetflixTemporal" style="display:none">
+          <div class="box-label">🌐 Tu link de código temporal hogar</div>
+          <div class="link-text" id="netflixTemporalLink"></div>
+          <a class="btn-abrir" id="netflixTemporalBtn" href="#" target="_blank">🌐 Abrir y obtener código temporal</a>
+        </div>
+
         <div class="expira-badge" style="margin-top:16px">⚠️ Úsalo antes de que expire</div>
         <button class="btn-reset" onclick="resetForm()">← Consultar de nuevo</button>
       </div>
@@ -434,10 +446,8 @@ body.svc-disney .btn-submit:hover{box-shadow:0 14px 44px rgba(26,111,255,.58);}
 /* ════════════════════════════
    CONFIGURACIÓN
 ════════════════════════════ */
-const API_URL = 'https://script.google.com/macros/s/AKfycbwJLV62xl8e_6sGz0qXHQ2JOtWynTOJtoC64vuoQsshF2HhLPjxOhqKRfGv4FNx4_Pv/exec';
+const API_URL = 'https://itachi-codigo.vercel.app/api/codigo';
 
-document.getElementById('waLink').href   = 'https://t.me/ItachiPeru';
-document.getElementById('waLink').href = 'https://wa.me/51986165524';
 
 /* ════════════════════════════
    BG CANVAS
