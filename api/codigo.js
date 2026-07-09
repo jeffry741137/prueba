@@ -6,6 +6,7 @@ const { simpleParser } = require('mailparser');
 const CUENTAS_ICLOUD = [
   { user: process.env.ICLOUD_USER,  pass: process.env.ICLOUD_PASS },
   { user: process.env.ICLOUD_USER2, pass: process.env.ICLOUD_PASS2 },
+  { user: process.env.ICLOUD_USER3, pass: process.env.ICLOUD_PASS3 },
 ];
 const MINUTOS_VALIDOS = 5;
 
